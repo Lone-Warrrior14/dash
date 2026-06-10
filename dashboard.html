@@ -1,0 +1,2104 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Freight Analytics Dashboard</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="dashboard_data.js"></script>
+
+    <style>
+        :root {
+
+            --primary: #2563EB;
+            --primary-light: #EFF6FF;
+
+            --bg: #F8FAFC;
+            --card: #FFFFFF;
+
+            --text: #111827;
+            --text-light: #6B7280;
+
+            --border: #E5E7EB;
+
+            --shadow:
+                0 2px 6px rgba(0, 0, 0, .05);
+
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family:
+                "Segoe UI",
+                sans-serif;
+        }
+
+        body {
+
+            background: var(--bg);
+            color: var(--text);
+
+        }
+
+        /* =========================
+   LAYOUT
+========================= */
+
+        .app {
+
+            display: flex;
+            min-height: 100vh;
+
+        }
+
+        .sidebar {
+
+            width: 260px;
+
+            background: white;
+
+            border-right:
+                1px solid var(--border);
+
+            position: fixed;
+
+            left: 0;
+            top: 0;
+
+            height: 100vh;
+
+            padding: 24px;
+
+        }
+
+        .main {
+
+            margin-left: 260px;
+
+            width: calc(100% - 260px);
+
+        }
+
+        /* =========================
+   LOGO
+========================= */
+
+        .logo {
+
+            margin-bottom: 30px;
+
+        }
+
+        .logo h2 {
+
+            font-size: 22px;
+
+        }
+
+        .logo p {
+
+            color: var(--text-light);
+            font-size: 13px;
+            margin-top: 5px;
+
+        }
+
+        /* =========================
+   MENU
+========================= */
+
+        .menu {
+
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+
+        }
+
+        .menu button {
+
+            border: none;
+
+            background: white;
+
+            text-align: left;
+
+            padding: 14px 16px;
+
+            border-radius: 10px;
+
+            cursor: pointer;
+
+            font-size: 15px;
+
+            transition: .2s;
+
+        }
+
+        .menu button:hover {
+
+            background: #F3F4F6;
+
+        }
+
+        .menu button.active {
+
+            background: var(--primary-light);
+
+            color: var(--primary);
+
+            border-left:
+                4px solid var(--primary);
+
+        }
+
+        /* =========================
+   TOPBAR
+========================= */
+
+        .topbar {
+
+            background: white;
+
+            height: 75px;
+
+            border-bottom:
+                1px solid var(--border);
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            padding: 0 30px;
+
+        }
+
+        .topbar h1 {
+
+            font-size: 24px;
+
+        }
+
+        .topbar p {
+
+            color: var(--text-light);
+
+        }
+
+        /* =========================
+   CONTENT
+========================= */
+
+        .content {
+
+            padding: 25px;
+
+        }
+
+        .page {
+
+            display: none;
+
+        }
+
+        .page.active {
+
+            display: block;
+
+        }
+
+        /* =========================
+   KPI GRID
+========================= */
+
+        .kpi-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(220px, 1fr));
+
+            gap: 18px;
+
+            margin-bottom: 25px;
+
+        }
+
+        .kpi {
+
+            background: white;
+
+            border-radius: 16px;
+
+            padding: 22px;
+
+            box-shadow: var(--shadow);
+
+            border:
+                1px solid var(--border);
+
+        }
+
+        .kpi-title {
+
+            color: var(--text-light);
+
+            font-size: 13px;
+
+            margin-bottom: 10px;
+
+        }
+
+        .kpi-value {
+
+            font-size: 34px;
+
+            font-weight: 700;
+
+        }
+
+        /* =========================
+   CHART GRID
+========================= */
+
+        .chart-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(auto-fit, minmax(360px, 1fr));
+
+            gap: 20px;
+
+            margin-bottom: 25px;
+
+        }
+
+        .chart-card {
+
+            background: white;
+
+            border-radius: 16px;
+
+            padding: 20px;
+
+            border:
+                1px solid var(--border);
+
+            box-shadow: var(--shadow);
+
+        }
+
+        .chart-card h3 {
+
+            margin-bottom: 15px;
+
+        }
+
+        .chart-container {
+
+            height: 350px;
+
+        }
+
+        /* =========================
+   TABLE CARD
+========================= */
+
+        .table-card {
+
+            background: white;
+
+            border-radius: 16px;
+
+            padding: 20px;
+
+            border:
+                1px solid var(--border);
+
+            box-shadow: var(--shadow);
+
+        }
+
+        .table-card h3 {
+
+            margin-bottom: 15px;
+
+        }
+
+        .table-toolbar {
+
+            display: flex;
+
+            gap: 10px;
+
+            margin-bottom: 15px;
+
+            flex-wrap: wrap;
+
+        }
+
+        .table-toolbar input,
+        .table-toolbar select {
+
+            padding: 10px;
+
+            border:
+                1px solid var(--border);
+
+            border-radius: 10px;
+            outline: none;
+
+        }
+
+        .table-toolbar input:focus,
+        .table-toolbar select:focus {
+            border-color: var(--primary);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: white;
+        }
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+        thead {
+
+            background: #F9FAFB;
+
+        }
+
+        th {
+
+            text-align: left;
+
+            padding: 12px;
+
+            border-bottom:
+                1px solid var(--border);
+            font-size: 13px;
+            color: var(--text-light);
+            font-weight: 600;
+
+        }
+
+        td {
+
+            padding: 12px;
+
+            border-bottom:
+                1px solid var(--border);
+            font-size: 14px;
+
+        }
+
+        tr:hover td {
+            background: #F8FAFC;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge-import {
+            background: #EFF6FF;
+            color: #1D4ED8;
+        }
+
+        .badge-local {
+            background: #F0FDF4;
+            color: #15803D;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        /* =========================
+   INSIGHTS
+========================= */
+
+        .insight-box {
+
+            background: white;
+
+            border-radius: 16px;
+
+            padding: 24px;
+
+            box-shadow: var(--shadow);
+
+            border:
+                1px solid var(--border);
+
+        }
+
+        .insight-box ul {
+
+            margin-left: 20px;
+
+            margin-top: 10px;
+
+        }
+
+        .insight-box li {
+
+            margin-bottom: 10px;
+
+        }
+
+        /* =========================
+   RESPONSIVE
+========================= */
+
+        @media(max-width:1200px) {
+
+            .chart-grid {
+
+                grid-template-columns: 1fr;
+
+            }
+
+        }
+
+        @media(max-width:900px) {
+
+            .sidebar {
+
+                display: none;
+
+            }
+
+            .main {
+
+                margin-left: 0;
+
+                width: 100%;
+
+            }
+
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div class="app">
+
+        <!-- SIDEBAR -->
+
+        <div class="sidebar">
+
+            <div class="logo">
+
+                <h2>Freight Analytics</h2>
+
+                <p>Supply Chain Dashboard</p>
+
+            </div>
+
+            <div class="menu">
+
+                <button class="active" onclick="showPage('overview',this)">
+                    Overview
+                </button>
+
+                <button onclick="showPage('imports',this)">
+                    Imports
+                </button>
+
+                <button onclick="showPage('local',this)">
+                    Local
+                </button>
+
+                <button onclick="showPage('vendors',this)">
+                    Vendors
+                </button>
+
+                <button onclick="showPage('categories',this)">
+                    Categories
+                </button>
+
+            </div>
+
+        </div>
+
+        <!-- MAIN -->
+
+        <div class="main">
+
+            <div class="topbar">
+
+                <div>
+
+                    <h1>Freight Analytics Dashboard</h1>
+
+                    <p>
+                        Operations & Import Intelligence
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="content">
+
+                <!-- =====================
+     OVERVIEW
+===================== -->
+
+                <div id="overview" class="page active">
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                        <h2 style="font-size: 18px; font-weight: 600; color: var(--text);">Overview Insights</h2>
+                        <div class="table-toolbar" style="margin-bottom: 0;">
+                            <select id="overviewTypeFilter" style="font-weight: 500; border-color: var(--border);">
+                                <option value="all">All Data Breakdown</option>
+                                <option value="import">Imports Only</option>
+                                <option value="local">Local Only</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="kpi-grid">
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Total POs
+                            </div>
+                            <div class="kpi-value" id="totalPOs">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Total Vendors
+                            </div>
+                            <div class="kpi-value" id="totalVendors">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Containers
+                            </div>
+                            <div class="kpi-value" id="totalContainers">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import POs
+                            </div>
+                            <div class="kpi-value" id="importPOs">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Total Delays
+                            </div>
+                            <div class="kpi-value" id="totalDelays">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import Delays
+                            </div>
+                            <div class="kpi-value" id="importDelayTotal">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="chart-grid">
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Import vs Local
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="importLocalChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Delay Distribution
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="delayChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="chart-grid">
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Country Analysis
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="countryChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Category Analysis
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="categoryChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- IMPORTS -->
+
+                <div id="imports" class="page">
+
+                    <h2>
+                        Import Analytics
+                    </h2>
+
+                    <br>
+
+                    <div class="kpi-grid">
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import Vendors
+                            </div>
+                            <div class="kpi-value" id="importVendors">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import Countries
+                            </div>
+                            <div class="kpi-value" id="importCountries">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import Containers
+                            </div>
+                            <div class="kpi-value" id="importContainers">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Import Delay Count
+                            </div>
+                            <div class="kpi-value" id="importDelayCount">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Total Import Value (KWD)
+                            </div>
+                            <div class="kpi-value" id="importTotalValue" style="font-size: 20px; color: var(--primary);">
+                            </div>
+                        </div>
+
+                        <div class="kpi" style="border-left: 4px solid var(--danger);">
+                            <div class="kpi-title">
+                                Value at Risk (KWD)
+                            </div>
+                            <div class="kpi-value" id="importDelayedValue" style="font-size: 20px; color: var(--danger);">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Avg. Overall Delay
+                            </div>
+                            <div class="kpi-value" id="importAvgDelay" style="font-size: 20px;">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <h3 style="margin: 20px 0 10px 0; color: var(--text-dark); font-size: 16px;">
+                        Delay Stage Breakdown (PO Count)
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 25px;">
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #3B82F6;">
+                            <div class="kpi-title" style="font-size: 11px;">EXF Delay</div>
+                            <div class="kpi-value" id="import_EXF" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #10B981;">
+                            <div class="kpi-title" style="font-size: 11px;">ETD Delay</div>
+                            <div class="kpi-value" id="import_ETD" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #F59E0B;">
+                            <div class="kpi-title" style="font-size: 11px;">ETA Delay</div>
+                            <div class="kpi-value" id="import_ETA" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #EF4444;">
+                            <div class="kpi-title" style="font-size: 11px;">BAYAN Delay</div>
+                            <div class="kpi-value" id="import_BAYAN" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #8B5CF6;">
+                            <div class="kpi-title" style="font-size: 11px;">AWH Delay</div>
+                            <div class="kpi-value" id="import_AWH" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #EC4899;">
+                            <div class="kpi-title" style="font-size: 11px;">GR Delay</div>
+                            <div class="kpi-value" id="import_GR" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #6B7280;">
+                            <div class="kpi-title" style="font-size: 11px;">PORT Delay</div>
+                            <div class="kpi-value" id="import_PORT" style="font-size: 20px;">0</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-grid">
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Import Countries
+                            </h3>
+
+                            <canvas id="importCountryChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Import Categories
+                            </h3>
+
+                            <canvas id="importCategoryChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Import Delay Types
+                            </h3>
+
+                            <canvas id="importDelayChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Value at Risk by Country (KWD)
+                            </h3>
+                            <canvas id="importValCountryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Average Delay by Country (Days)
+                            </h3>
+                            <canvas id="importAvgDelayCountryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Value at Risk by Category (KWD)
+                            </h3>
+                            <canvas id="importValCategoryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Top 10 Delayed Vendors (PO Count)
+                            </h3>
+                            <div id="importTopDelayedVendorsList" style="margin-top: 15px; overflow-y: auto;">
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- LOCAL -->
+
+                <div id="local" class="page">
+
+                    <h2>
+                        Local Analytics
+                    </h2>
+
+                    <br>
+
+                    <div class="kpi-grid">
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Local Vendors
+                            </div>
+                            <div class="kpi-value" id="localVendors">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Local Countries
+                            </div>
+                            <div class="kpi-value" id="localCountries">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Local Containers
+                            </div>
+                            <div class="kpi-value" id="localContainers">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Local Delay Count
+                            </div>
+                            <div class="kpi-value" id="localDelayCount">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Total Local Value (KWD)
+                            </div>
+                            <div class="kpi-value" id="localTotalValue" style="font-size: 20px; color: var(--success);">
+                            </div>
+                        </div>
+
+                        <div class="kpi" style="border-left: 4px solid var(--danger);">
+                            <div class="kpi-title">
+                                Value at Risk (KWD)
+                            </div>
+                            <div class="kpi-value" id="localDelayedValue" style="font-size: 20px; color: var(--danger);">
+                            </div>
+                        </div>
+
+                        <div class="kpi">
+                            <div class="kpi-title">
+                                Avg. Overall Delay
+                            </div>
+                            <div class="kpi-value" id="localAvgDelay" style="font-size: 20px;">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <h3 style="margin: 20px 0 10px 0; color: var(--text-dark); font-size: 16px;">
+                        Delay Stage Breakdown (PO Count)
+                    </h3>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 25px;">
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #3B82F6;">
+                            <div class="kpi-title" style="font-size: 11px;">EXF Delay</div>
+                            <div class="kpi-value" id="local_EXF" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #10B981;">
+                            <div class="kpi-title" style="font-size: 11px;">ETD Delay</div>
+                            <div class="kpi-value" id="local_ETD" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #F59E0B;">
+                            <div class="kpi-title" style="font-size: 11px;">ETA Delay</div>
+                            <div class="kpi-value" id="local_ETA" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #EF4444;">
+                            <div class="kpi-title" style="font-size: 11px;">BAYAN Delay</div>
+                            <div class="kpi-value" id="local_BAYAN" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #8B5CF6;">
+                            <div class="kpi-title" style="font-size: 11px;">AWH Delay</div>
+                            <div class="kpi-value" id="local_AWH" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #EC4899;">
+                            <div class="kpi-title" style="font-size: 11px;">GR Delay</div>
+                            <div class="kpi-value" id="local_GR" style="font-size: 20px;">0</div>
+                        </div>
+                        <div class="kpi" style="padding: 12px; border-left: 3px solid #6B7280;">
+                            <div class="kpi-title" style="font-size: 11px;">PORT Delay</div>
+                            <div class="kpi-value" id="local_PORT" style="font-size: 20px;">0</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-grid">
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Local Countries
+                            </h3>
+
+                            <canvas id="localCountryChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Local Categories
+                            </h3>
+
+                            <canvas id="localCategoryChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Local Delay Types
+                            </h3>
+
+                            <canvas id="localDelayChart">
+                            </canvas>
+
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Value at Risk by Country (KWD)
+                            </h3>
+                            <canvas id="localValCountryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Average Delay by Country (Days)
+                            </h3>
+                            <canvas id="localAvgDelayCountryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Value at Risk by Category (KWD)
+                            </h3>
+                            <canvas id="localValCategoryChart">
+                            </canvas>
+                        </div>
+
+                        <div class="chart-card">
+                            <h3>
+                                Top 10 Delayed Vendors (PO Count)
+                            </h3>
+                            <div id="localTopDelayedVendorsList" style="margin-top: 15px; overflow-y: auto;">
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Vendors -->
+
+                <div id="vendors" class="page">
+
+                    <h2>
+                        Vendor Intelligence
+                    </h2>
+
+                    <br>
+
+                    <div class="table-card">
+
+                        <h3>
+                            Vendor Analysis
+                        </h3>
+
+                        <div class="table-toolbar">
+
+                            <input type="text" id="vendorSearchInput" placeholder="Search Vendor">
+
+                            <select id="vendorCountryFilter">
+                                <option value="">All Countries</option>
+                            </select>
+
+                            <select id="vendorTypeFilter">
+                                <option value="">All Types</option>
+                            </select>
+
+                        </div>
+
+                        <div id="vendorTableContainer">
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- =====================
+                     CATEGORIES
+                ===================== -->
+
+                <div id="categories" class="page">
+
+                    <h2>
+                        Category Intelligence
+                    </h2>
+
+                    <br>
+
+                    <div class="chart-grid">
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Top Categories
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="categoryDelayChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                        <div class="chart-card">
+
+                            <h3>
+                                Category Delay Breakdown
+                            </h3>
+
+                            <div class="chart-container">
+
+                                <canvas id="categoryBreakdownChart">
+                                </canvas>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class="table-card">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                            <h3 style="margin-bottom: 0;">
+                                Category Analysis
+                            </h3>
+                            <div class="table-toolbar" style="margin-bottom: 0; padding: 0; background: transparent; border: none; box-shadow: none;">
+                                <select id="categoryTypeFilter" style="font-weight: 500; border-color: var(--border); padding: 8px 12px; border-radius: 8px; font-size: 14px;">
+                                    <option value="all">All Category Data</option>
+                                    <option value="import">Imports Only</option>
+                                    <option value="local">Local Only</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="categoryTableContainer">
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+
+
+                <!-- =====================
+     JAVASCRIPT
+===================== -->
+
+                <script>
+
+                    /* =====================
+                       PAGE NAVIGATION
+                    ===================== */
+
+                    function showPage(
+                        pageId,
+                        button
+                    ) {
+
+                        document
+                            .querySelectorAll(".page")
+                            .forEach(page => {
+
+                                page.classList.remove(
+                                    "active"
+                                );
+
+                            });
+
+                        document
+                            .getElementById(pageId)
+                            .classList.add(
+                                "active"
+                            );
+
+                        document
+                            .querySelectorAll(
+                                ".menu button"
+                            )
+                            .forEach(btn => {
+
+                                btn.classList.remove(
+                                    "active"
+                                );
+
+                            });
+
+                        button.classList.add(
+                            "active"
+                        );
+
+                    }
+
+                    /* =====================
+                       COUNTRY MAP
+                    ===================== */
+
+                    const countryMap = {
+
+                        SA: "Saudi Arabia",
+                        KW: "Kuwait",
+                        CN: "China",
+                        IT: "Italy",
+                        AE: "UAE",
+                        AT: "Austria",
+                        ES: "Spain",
+                        GR: "Greece",
+                        KR: "South Korea"
+
+                    };
+
+                    /* =====================
+                       KPI POPULATION
+                    ===================== */
+
+                    /* =====================
+                       KPI POPULATION
+                    ===================== */
+
+                    function populateKPIs() {
+                        // Overview KPIs
+                        document.getElementById("totalPOs").innerText = dashboardData.total_pos;
+                        document.getElementById("totalVendors").innerText = dashboardData.total_vendors;
+                        document.getElementById("totalContainers").innerText = dashboardData.total_containers;
+                        document.getElementById("importPOs").innerText = dashboardData.import_pos;
+                        document.getElementById("totalDelays").innerText = dashboardData.total_delay_count;
+                        document.getElementById("importDelayTotal").innerText = dashboardData.import_delay_total;
+
+                        // Import Tab KPIs
+                        document.getElementById("importVendors").innerText = dashboardData.import_vendors;
+                        document.getElementById("importCountries").innerText = dashboardData.import_countries;
+                        document.getElementById("importContainers").innerText = dashboardData.import_containers;
+                        document.getElementById("importDelayCount").innerText = dashboardData.import_delay_total;
+
+                        // Local Tab KPIs
+                        document.getElementById("localVendors").innerText = dashboardData.local_vendors;
+                        document.getElementById("localCountries").innerText = dashboardData.local_countries;
+                        document.getElementById("localContainers").innerText = dashboardData.local_containers;
+                        document.getElementById("localDelayCount").innerText = dashboardData.local_delay_total;
+
+                        // Import Delay Stage KPIs
+                        const impDelays = dashboardData.import_delay_counts || {};
+                        document.getElementById("import_EXF").innerText = impDelays.EXF || 0;
+                        document.getElementById("import_ETD").innerText = impDelays.ETD || 0;
+                        document.getElementById("import_ETA").innerText = impDelays.ETA || 0;
+                        document.getElementById("import_BAYAN").innerText = impDelays.BAYAN || 0;
+                        document.getElementById("import_AWH").innerText = impDelays.AWH || 0;
+                        document.getElementById("import_GR").innerText = impDelays.GR || 0;
+                        document.getElementById("import_PORT").innerText = impDelays.PORT || 0;
+
+                        // Local Delay Stage KPIs
+                        const locDelays = dashboardData.local_delay_counts || {};
+                        document.getElementById("local_EXF").innerText = locDelays.EXF || 0;
+                        document.getElementById("local_ETD").innerText = locDelays.ETD || 0;
+                        document.getElementById("local_ETA").innerText = locDelays.ETA || 0;
+                        document.getElementById("local_BAYAN").innerText = locDelays.BAYAN || 0;
+                        document.getElementById("local_AWH").innerText = locDelays.AWH || 0;
+                        document.getElementById("local_GR").innerText = locDelays.GR || 0;
+                        document.getElementById("local_PORT").innerText = locDelays.PORT || 0;
+
+                        // Import New KPIs
+                        document.getElementById("importTotalValue").innerText = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(dashboardData.import_total_value) + " KWD";
+                        document.getElementById("importDelayedValue").innerText = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(dashboardData.import_delayed_value) + " KWD";
+                        document.getElementById("importAvgDelay").innerText = (dashboardData.import_avg_delay_days || 0).toFixed(1) + " Days";
+
+                        // Local New KPIs
+                        document.getElementById("localTotalValue").innerText = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(dashboardData.local_total_value) + " KWD";
+                        document.getElementById("localDelayedValue").innerText = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(dashboardData.local_delayed_value) + " KWD";
+                        document.getElementById("localAvgDelay").innerText = (dashboardData.local_avg_delay_days || 0).toFixed(1) + " Days";
+
+                        // Populate Top Delayed Vendors (Import)
+                        const importTopVendorsList = document.getElementById("importTopDelayedVendorsList");
+                        if (importTopVendorsList && dashboardData.import_top_delayed_vendors) {
+                            importTopVendorsList.innerHTML = dashboardData.import_top_delayed_vendors.map((item, index) => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+                                    <div style="font-weight: 500; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 68%;" title="${item['Vendor Name']}">
+                                        ${index + 1}. ${item['Vendor Name']}
+                                    </div>
+                                    <div style="font-weight: 600; color: var(--danger); font-size: 11px; background: #fee2e2; padding: 3px 10px; border-radius: 12px; white-space: nowrap;">
+                                        ${item['Delayed POs']} Delayed POs
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+
+                        // Populate Top Delayed Vendors (Local)
+                        const localTopVendorsList = document.getElementById("localTopDelayedVendorsList");
+                        if (localTopVendorsList && dashboardData.local_top_delayed_vendors) {
+                            localTopVendorsList.innerHTML = dashboardData.local_top_delayed_vendors.map((item, index) => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px;">
+                                    <div style="font-weight: 500; color: var(--text-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 68%;" title="${item['Vendor Name']}">
+                                        ${index + 1}. ${item['Vendor Name']}
+                                    </div>
+                                    <div style="font-weight: 600; color: var(--danger); font-size: 11px; background: #fee2e2; padding: 3px 10px; border-radius: 12px; white-space: nowrap;">
+                                        ${item['Delayed POs']} Delayed POs
+                                    </div>
+                                </div>
+                            `).join('');
+                        }
+                    }
+
+                    populateKPIs();
+
+                    /* =====================
+                       OVERVIEW CHARTS INITIALIZATION
+                    ===================== */
+
+                    // Import vs Local Doughnut
+                    new Chart(
+                        document.getElementById("importLocalChart"),
+                        {
+                            type: "doughnut",
+                            data: {
+                                labels: dashboardData.import_local.map(x => x["Import / Local"]),
+                                datasets: [{
+                                    data: dashboardData.import_local.map(x => x["PO#"]),
+                                    backgroundColor: ["#2563EB", "#93C5FD"]
+                                }]
+                            }
+                        }
+                    );
+
+                    // Delay Distribution
+                    let delayChartInstance = new Chart(
+                        document.getElementById("delayChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: Object.keys(dashboardData.delay_counts),
+                                datasets: [{
+                                    label: "Delayed POs",
+                                    data: Object.values(dashboardData.delay_counts),
+                                    backgroundColor: "#2563EB"
+                                }]
+                            }
+                        }
+                    );
+
+                    // Country Analysis
+                    let countryChartInstance = new Chart(
+                        document.getElementById("countryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.countries.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "PO Count",
+                                    data: dashboardData.countries.map(x => x["PO#"]),
+                                    backgroundColor: "#3B82F6"
+                                }]
+                            }
+                        }
+                    );
+
+                    // Category Analysis
+                    let categoryChartInstance = new Chart(
+                        document.getElementById("categoryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.categories.map(x => x["Category"]),
+                                datasets: [{
+                                    label: "PO Count",
+                                    data: dashboardData.categories.map(x => x["PO#"]),
+                                    backgroundColor: "#60A5FA"
+                                }]
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       OVERVIEW PAGE INTERACTIVE FILTER
+                    ===================== */
+
+                    const overviewTypeFilter = document.getElementById("overviewTypeFilter");
+                    if (overviewTypeFilter) {
+                        overviewTypeFilter.addEventListener("change", function () {
+                            const val = this.value; // "all", "import", "local"
+                            
+                            // 1. Update KPIs
+                            if (val === "all") {
+                                document.getElementById("totalPOs").innerText = dashboardData.total_pos;
+                                document.getElementById("totalVendors").innerText = dashboardData.total_vendors;
+                                document.getElementById("totalContainers").innerText = dashboardData.total_containers;
+                                document.getElementById("importPOs").innerText = dashboardData.import_pos;
+                                document.getElementById("totalDelays").innerText = dashboardData.total_delay_count;
+                                document.getElementById("importDelayTotal").innerText = dashboardData.import_delay_total;
+                            } else if (val === "import") {
+                                document.getElementById("totalPOs").innerText = dashboardData.import_pos;
+                                document.getElementById("totalVendors").innerText = dashboardData.import_vendors;
+                                document.getElementById("totalContainers").innerText = dashboardData.import_containers;
+                                document.getElementById("importPOs").innerText = dashboardData.import_pos;
+                                document.getElementById("totalDelays").innerText = dashboardData.import_delay_total;
+                                document.getElementById("importDelayTotal").innerText = dashboardData.import_delay_total;
+                            } else if (val === "local") {
+                                document.getElementById("totalPOs").innerText = dashboardData.local_pos;
+                                document.getElementById("totalVendors").innerText = dashboardData.local_vendors;
+                                document.getElementById("totalContainers").innerText = dashboardData.local_containers;
+                                document.getElementById("importPOs").innerText = 0;
+                                document.getElementById("totalDelays").innerText = dashboardData.local_delay_total;
+                                document.getElementById("importDelayTotal").innerText = 0;
+                            }
+
+                            // 2. Update Charts
+                            let delayData = [];
+                            let countryData = [];
+                            let categoryData = [];
+
+                            if (val === "all") {
+                                delayData = {
+                                    labels: Object.keys(dashboardData.delay_counts),
+                                    values: Object.values(dashboardData.delay_counts)
+                                };
+                                countryData = {
+                                    labels: dashboardData.countries.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                    values: dashboardData.countries.map(x => x["PO#"])
+                                };
+                                categoryData = {
+                                    labels: dashboardData.categories.map(x => x["Category"]),
+                                    values: dashboardData.categories.map(x => x["PO#"])
+                                };
+                            } else if (val === "import") {
+                                delayData = {
+                                    labels: Object.keys(dashboardData.import_delay_counts),
+                                    values: Object.values(dashboardData.import_delay_counts)
+                                };
+                                countryData = {
+                                    labels: dashboardData.import_country_analysis.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                    values: dashboardData.import_country_analysis.map(x => x["PO#"])
+                                };
+                                categoryData = {
+                                    labels: dashboardData.import_category_analysis.map(x => x["Category"]),
+                                    values: dashboardData.import_category_analysis.map(x => x["PO#"])
+                                };
+                            } else if (val === "local") {
+                                delayData = {
+                                    labels: Object.keys(dashboardData.local_delay_counts),
+                                    values: Object.values(dashboardData.local_delay_counts)
+                                };
+                                countryData = {
+                                    labels: dashboardData.local_country_analysis.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                    values: dashboardData.local_country_analysis.map(x => x["PO#"])
+                                };
+                                categoryData = {
+                                    labels: dashboardData.local_category_analysis.map(x => x["Category"]),
+                                    values: dashboardData.local_category_analysis.map(x => x["PO#"])
+                                };
+                            }
+
+                             // Update delay distribution chart
+                             const delayColor = val === "local" ? "#10B981" : "#2563EB";
+                             const countryColor = val === "local" ? "#059669" : "#3B82F6";
+                             const categoryColor = val === "local" ? "#34D399" : "#60A5FA";
+
+                             delayChartInstance.data.labels = delayData.labels;
+                             delayChartInstance.data.datasets[0].data = delayData.values;
+                             delayChartInstance.data.datasets[0].backgroundColor = delayColor;
+                             delayChartInstance.update();
+
+                             // Update country chart
+                             countryChartInstance.data.labels = countryData.labels;
+                             countryChartInstance.data.datasets[0].data = countryData.values;
+                             countryChartInstance.data.datasets[0].backgroundColor = countryColor;
+                             countryChartInstance.update();
+
+                             // Update category chart
+                             categoryChartInstance.data.labels = categoryData.labels;
+                             categoryChartInstance.data.datasets[0].data = categoryData.values;
+                             categoryChartInstance.data.datasets[0].backgroundColor = categoryColor;
+                             categoryChartInstance.update();
+                         });
+                    }
+
+                    /* =====================
+                       IMPORT COUNTRY
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById(
+                            "importCountryChart"
+                        ),
+                        {
+                            type: "bar",
+
+                            data: {
+
+                                labels:
+                                    dashboardData
+                                        .import_country_analysis
+                                        .map(
+                                            x =>
+                                                countryMap[
+                                                x["Vendor Ctry"]
+                                                ]
+                                                ||
+                                                x["Vendor Ctry"]
+                                        ),
+
+                                datasets: [{
+
+                                    label: "Import POs",
+
+                                    data:
+                                        dashboardData
+                                            .import_country_analysis
+                                            .map(
+                                                x => x["PO#"]
+                                            ),
+
+                                    backgroundColor: "#2563EB"
+
+                                }]
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       IMPORT CATEGORY
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById(
+                            "importCategoryChart"
+                        ),
+                        {
+                            type: "bar",
+
+                            data: {
+
+                                labels:
+                                    dashboardData
+                                        .import_category_analysis
+                                        .map(
+                                            x => x["Category"]
+                                        ),
+
+                                datasets: [{
+
+                                    label: "Import POs",
+
+                                    data:
+                                        dashboardData
+                                            .import_category_analysis
+                                            .map(
+                                                x => x["PO#"]
+                                            ),
+
+                                    backgroundColor: "#3B82F6"
+
+                                }]
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       IMPORT DELAYS CHART
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById("importDelayChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: Object.keys(dashboardData.import_delay_counts),
+                                datasets: [{
+                                    label: "Import Delays",
+                                    data: Object.values(dashboardData.import_delay_counts),
+                                    backgroundColor: "#60A5FA"
+                                }]
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       IMPORT EXTRA ADVANCED CHARTS
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById("importValCountryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.import_value_by_country.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "Value at Risk (KWD)",
+                                    data: dashboardData.import_value_by_country.map(x => x["InbValKWD"]),
+                                    backgroundColor: "#ef4444"
+                                }]
+                            },
+                            options: {
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.dataset.label + ': ' + context.raw.toLocaleString() + ' KWD';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("importAvgDelayCountryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.import_avg_delay_by_country.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "Avg. Delay (Days)",
+                                    data: dashboardData.import_avg_delay_by_country.map(x => x["Over All Delay"]),
+                                    backgroundColor: "#F59E0B"
+                                }]
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("importValCategoryChart"),
+                        {
+                            type: "doughnut",
+                            data: {
+                                labels: dashboardData.import_value_by_category.map(x => x["Category"]),
+                                datasets: [{
+                                    data: dashboardData.import_value_by_category.map(x => x["InbValKWD"]),
+                                    backgroundColor: ["#1E3A8A", "#2563EB", "#3B82F6", "#60A5FA", "#93C5FD", "#BFDBFE"]
+                                }]
+                            },
+                            options: {
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.label + ': ' + context.raw.toLocaleString() + ' KWD';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       LOCAL CHARTS
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById("localCountryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.local_country_analysis.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "Local POs",
+                                    data: dashboardData.local_country_analysis.map(x => x["PO#"]),
+                                    backgroundColor: "#10B981"
+                                }]
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("localCategoryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.local_category_analysis.map(x => x["Category"]),
+                                datasets: [{
+                                    label: "Local POs",
+                                    data: dashboardData.local_category_analysis.map(x => x["PO#"]),
+                                    backgroundColor: "#059669"
+                                }]
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("localDelayChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: Object.keys(dashboardData.local_delay_counts),
+                                datasets: [{
+                                    label: "Local Delays",
+                                    data: Object.values(dashboardData.local_delay_counts),
+                                    backgroundColor: "#16A34A"
+                                }]
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       LOCAL EXTRA ADVANCED CHARTS
+                    ===================== */
+
+                    new Chart(
+                        document.getElementById("localValCountryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.local_value_by_country.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "Value at Risk (KWD)",
+                                    data: dashboardData.local_value_by_country.map(x => x["InbValKWD"]),
+                                    backgroundColor: "#ef4444"
+                                }]
+                            },
+                            options: {
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.dataset.label + ': ' + context.raw.toLocaleString() + ' KWD';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("localAvgDelayCountryChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.local_avg_delay_by_country.map(x => countryMap[x["Vendor Ctry"]] || x["Vendor Ctry"]),
+                                datasets: [{
+                                    label: "Avg. Delay (Days)",
+                                    data: dashboardData.local_avg_delay_by_country.map(x => x["Over All Delay"]),
+                                    backgroundColor: "#F59E0B"
+                                }]
+                            }
+                        }
+                    );
+
+                    new Chart(
+                        document.getElementById("localValCategoryChart"),
+                        {
+                            type: "doughnut",
+                            data: {
+                                labels: dashboardData.local_value_by_category.map(x => x["Category"]),
+                                datasets: [{
+                                    data: dashboardData.local_value_by_category.map(x => x["InbValKWD"]),
+                                    backgroundColor: ["#064E3B", "#059669", "#10B981", "#34D399", "#6EE7B7", "#A7F3D0"]
+                                }]
+                            },
+                            options: {
+                                plugins: {
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                return context.label + ': ' + context.raw.toLocaleString() + ' KWD';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    );
+
+                    /* =====================
+                       INITIALIZE VENDOR FILTERS & TABLES
+                    ===================== */
+
+                    const searchInput = document.getElementById("vendorSearchInput");
+                    const countryFilter = document.getElementById("vendorCountryFilter");
+                    const typeFilter = document.getElementById("vendorTypeFilter");
+                    const vendorTableContainer = document.getElementById("vendorTableContainer");
+
+                    // Populate Country Filter Dropdown
+                    if (dashboardData.filters && dashboardData.filters.countries) {
+                        dashboardData.filters.countries.forEach(ctry => {
+                            const opt = document.createElement("option");
+                            opt.value = ctry;
+                            opt.textContent = countryMap[ctry] || ctry;
+                            countryFilter.appendChild(opt);
+                        });
+                    }
+
+                    // Populate Type Filter Dropdown
+                    if (dashboardData.filters && dashboardData.filters.import_local) {
+                        dashboardData.filters.import_local.forEach(type => {
+                            const opt = document.createElement("option");
+                            opt.value = type;
+                            opt.textContent = type;
+                            typeFilter.appendChild(opt);
+                        });
+                    }
+
+                    // Render Vendor Table
+                    function renderVendorTable(vendorsList) {
+                        if (!vendorTableContainer) return;
+                        
+                        if (!vendorsList || vendorsList.length === 0) {
+                            vendorTableContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-light);">No vendors found matching filters.</div>';
+                            return;
+                        }
+
+                        let totalEXF = 0;
+                        let totalETD = 0;
+                        let totalETA = 0;
+                        let totalBAYAN = 0;
+                        let totalAWH = 0;
+                        let totalGR = 0;
+                        let totalPort = 0;
+                        let totalDelay = 0;
+
+                        let html = `
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Vendor Name</th>
+                                            <th>Country</th>
+                                            <th>Type</th>
+                                            <th class="text-right">EXF Delay</th>
+                                            <th class="text-right">ETD Delay</th>
+                                            <th class="text-right">ETA Delay</th>
+                                            <th class="text-right">BAYAN Delay</th>
+                                            <th class="text-right">AWH Delay</th>
+                                            <th class="text-right">GR Delay</th>
+                                            <th class="text-right">Port Delay</th>
+                                            <th class="text-right font-semibold">Total Delay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
+                        vendorsList.forEach(v => {
+                            const typeClass = v["Import / Local"] === "Import" ? "badge-import" : "badge-local";
+                            totalEXF += v["EXF Delay"] || 0;
+                            totalETD += v["ETD Delay"] || 0;
+                            totalETA += v["ETA Delay"] || 0;
+                            totalBAYAN += v["BAYAN Delay"] || 0;
+                            totalAWH += v["AWH Delay"] || 0;
+                            totalGR += v["GR Delay"] || 0;
+                            totalPort += v["Port Delay"] || 0;
+                            totalDelay += v["Total Delay"] || 0;
+
+                            html += `
+                                <tr>
+                                    <td class="font-semibold">${v["Vendor Name"]}</td>
+                                    <td>${countryMap[v["Vendor Ctry"]] || v["Vendor Ctry"] || "-"}</td>
+                                    <td><span class="badge ${typeClass}">${v["Import / Local"]}</span></td>
+                                    <td class="text-right ${v["EXF Delay"] > 0 ? 'font-semibold' : ''}">${v["EXF Delay"]}</td>
+                                    <td class="text-right ${v["ETD Delay"] > 0 ? 'font-semibold' : ''}">${v["ETD Delay"]}</td>
+                                    <td class="text-right ${v["ETA Delay"] > 0 ? 'font-semibold' : ''}">${v["ETA Delay"]}</td>
+                                    <td class="text-right ${v["BAYAN Delay"] > 0 ? 'font-semibold' : ''}">${v["BAYAN Delay"]}</td>
+                                    <td class="text-right ${v["AWH Delay"] > 0 ? 'font-semibold' : ''}">${v["AWH Delay"]}</td>
+                                    <td class="text-right ${v["GR Delay"] > 0 ? 'font-semibold' : ''}">${v["GR Delay"]}</td>
+                                    <td class="text-right ${v["Port Delay"] > 0 ? 'font-semibold' : ''}">${v["Port Delay"]}</td>
+                                    <td class="text-right font-semibold" style="color: var(--primary);">${v["Total Delay"]}</td>
+                                </tr>
+                            `;
+                        });
+
+                        html += `
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style="background-color: var(--bg-hover); font-weight: 700; border-top: 2px solid var(--border);">
+                                            <td colspan="3" class="font-bold">Total (${vendorsList.length} vendors)</td>
+                                            <td class="text-right font-bold">${totalEXF}</td>
+                                            <td class="text-right font-bold">${totalETD}</td>
+                                            <td class="text-right font-bold">${totalETA}</td>
+                                            <td class="text-right font-bold">${totalBAYAN}</td>
+                                            <td class="text-right font-bold">${totalAWH}</td>
+                                            <td class="text-right font-bold">${totalGR}</td>
+                                            <td class="text-right font-bold">${totalPort}</td>
+                                            <td class="text-right font-bold" style="color: var(--primary);">${totalDelay}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        `;
+                        vendorTableContainer.innerHTML = html;
+                    }
+
+                    // Filter and Update Vendor Table
+                    function filterAndRenderVendors() {
+                        const searchVal = searchInput.value.toLowerCase().trim();
+                        const countryVal = countryFilter.value;
+                        const typeVal = typeFilter.value;
+
+                        const filtered = dashboardData.vendors.filter(v => {
+                            const matchesSearch = v["Vendor Name"].toLowerCase().includes(searchVal);
+                            const matchesCountry = !countryVal || v["Vendor Ctry"] === countryVal;
+                            const matchesType = !typeVal || v["Import / Local"] === typeVal;
+                            return matchesSearch && matchesCountry && matchesType;
+                        });
+
+                        renderVendorTable(filtered);
+                    }
+
+                    // Attach Listeners
+                    if (searchInput) searchInput.addEventListener("input", filterAndRenderVendors);
+                    if (countryFilter) countryFilter.addEventListener("change", filterAndRenderVendors);
+                    if (typeFilter) typeFilter.addEventListener("change", filterAndRenderVendors);
+
+                    // Initial Render
+                    renderVendorTable(dashboardData.vendors);
+
+
+                    /* =====================
+                       INITIALIZE CATEGORY TABLE & SLICER
+                    ===================== */
+
+                    const categoryTableContainer = document.getElementById("categoryTableContainer");
+                    const categoryTypeFilter = document.getElementById("categoryTypeFilter");
+
+                    // 1. Top Categories by PO Count Chart
+                    let categoryDelayChartInstance = new Chart(
+                        document.getElementById("categoryDelayChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.categories.map(x => x["Category"]),
+                                datasets: [{
+                                    label: "PO Count",
+                                    data: dashboardData.categories.map(x => x["PO#"]),
+                                    backgroundColor: "#60A5FA"
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false
+                            }
+                        }
+                    );
+
+                    // 2. Category Delay Stage Breakdown Chart (Stacked)
+                    let categoryBreakdownChartInstance = new Chart(
+                        document.getElementById("categoryBreakdownChart"),
+                        {
+                            type: "bar",
+                            data: {
+                                labels: dashboardData.category_table.map(x => x["Category"]),
+                                datasets: [
+                                    { label: "EXF", data: dashboardData.category_table.map(x => x["EXF Delay"]), backgroundColor: "#3B82F6" },
+                                    { label: "ETD", data: dashboardData.category_table.map(x => x["ETD Delay"]), backgroundColor: "#10B981" },
+                                    { label: "ETA", data: dashboardData.category_table.map(x => x["ETA Delay"]), backgroundColor: "#F59E0B" },
+                                    { label: "BAYAN", data: dashboardData.category_table.map(x => x["BAYAN Delay"]), backgroundColor: "#EF4444" },
+                                    { label: "AWH", data: dashboardData.category_table.map(x => x["AWH Delay"]), backgroundColor: "#8B5CF6" },
+                                    { label: "GR", data: dashboardData.category_table.map(x => x["GR Delay"]), backgroundColor: "#EC4899" },
+                                    { label: "PORT", data: dashboardData.category_table.map(x => x["Port Delay"]), backgroundColor: "#6B7280" }
+                                ]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: { stacked: true },
+                                    y: { stacked: true }
+                                }
+                            }
+                        }
+                    );
+
+                    function renderCategoryTable(type) {
+                        if (!categoryTableContainer) return;
+                        
+                        let data = dashboardData.category_table;
+                        if (type === "import") {
+                            data = dashboardData.import_category_table;
+                        } else if (type === "local") {
+                            data = dashboardData.local_category_table;
+                        }
+
+                        if (!data || data.length === 0) {
+                            categoryTableContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-light);">No category data found.</div>';
+                            return;
+                        }
+
+                        let html = `
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Category</th>
+                                            <th class="text-right">EXF Delay</th>
+                                            <th class="text-right">ETD Delay</th>
+                                            <th class="text-right">ETA Delay</th>
+                                            <th class="text-right">BAYAN Delay</th>
+                                            <th class="text-right">AWH Delay</th>
+                                            <th class="text-right">GR Delay</th>
+                                            <th class="text-right">Port Delay</th>
+                                            <th class="text-right font-semibold">Total Delay</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+
+                        data.forEach(cat => {
+                            const totalDelay = cat["EXF Delay"] + cat["ETD Delay"] + cat["ETA Delay"] + cat["BAYAN Delay"] + cat["AWH Delay"] + cat["GR Delay"] + cat["Port Delay"];
+                            html += `
+                                <tr>
+                                    <td class="font-semibold">${cat["Category"]}</td>
+                                    <td class="text-right ${cat["EXF Delay"] > 0 ? 'font-semibold' : ''}">${cat["EXF Delay"]}</td>
+                                    <td class="text-right ${cat["ETD Delay"] > 0 ? 'font-semibold' : ''}">${cat["ETD Delay"]}</td>
+                                    <td class="text-right ${cat["ETA Delay"] > 0 ? 'font-semibold' : ''}">${cat["ETA Delay"]}</td>
+                                    <td class="text-right ${cat["BAYAN Delay"] > 0 ? 'font-semibold' : ''}">${cat["BAYAN Delay"]}</td>
+                                    <td class="text-right ${cat["AWH Delay"] > 0 ? 'font-semibold' : ''}">${cat["AWH Delay"]}</td>
+                                    <td class="text-right ${cat["GR Delay"] > 0 ? 'font-semibold' : ''}">${cat["GR Delay"]}</td>
+                                    <td class="text-right ${cat["Port Delay"] > 0 ? 'font-semibold' : ''}">${cat["Port Delay"]}</td>
+                                    <td class="text-right font-semibold" style="color: var(--primary);">${totalDelay}</td>
+                                </tr>
+                            `;
+                        });
+
+                        html += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                        categoryTableContainer.innerHTML = html;
+                    }
+
+                    // Handle Category Slicer Change
+                    if (categoryTypeFilter) {
+                        categoryTypeFilter.addEventListener("change", function () {
+                            const val = this.value; // "all", "import", "local"
+                            
+                            // 1. Update Table
+                            renderCategoryTable(val);
+
+                            // 2. Update Category Delay Chart (Top Categories PO Count)
+                            let delayLabels = [];
+                            let delayData = [];
+                            let delayColor = "#60A5FA"; // Default Blue
+                            
+                            if (val === "all") {
+                                delayLabels = dashboardData.categories.map(x => x["Category"]);
+                                delayData = dashboardData.categories.map(x => x["PO#"]);
+                                delayColor = "#60A5FA";
+                            } else if (val === "import") {
+                                delayLabels = dashboardData.import_category_analysis.map(x => x["Category"]);
+                                delayData = dashboardData.import_category_analysis.map(x => x["PO#"]);
+                                delayColor = "#3B82F6";
+                            } else if (val === "local") {
+                                delayLabels = dashboardData.local_category_analysis.map(x => x["Category"]);
+                                delayData = dashboardData.local_category_analysis.map(x => x["PO#"]);
+                                delayColor = "#10B981";
+                            }
+
+                            categoryDelayChartInstance.data.labels = delayLabels;
+                            categoryDelayChartInstance.data.datasets[0].data = delayData;
+                            categoryDelayChartInstance.data.datasets[0].backgroundColor = delayColor;
+                            categoryDelayChartInstance.update();
+
+                            // 3. Update Stacked Breakdown Chart
+                            let breakdownSrc = dashboardData.category_table;
+                            if (val === "import") breakdownSrc = dashboardData.import_category_table;
+                            else if (val === "local") breakdownSrc = dashboardData.local_category_table;
+
+                            categoryBreakdownChartInstance.data.labels = breakdownSrc.map(x => x["Category"]);
+                            categoryBreakdownChartInstance.data.datasets[0].data = breakdownSrc.map(x => x["EXF Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[1].data = breakdownSrc.map(x => x["ETD Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[2].data = breakdownSrc.map(x => x["ETA Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[3].data = breakdownSrc.map(x => x["BAYAN Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[4].data = breakdownSrc.map(x => x["AWH Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[5].data = breakdownSrc.map(x => x["GR Delay"]);
+                            categoryBreakdownChartInstance.data.datasets[6].data = breakdownSrc.map(x => x["Port Delay"]);
+                            categoryBreakdownChartInstance.update();
+                        });
+                    }
+
+                    // Initial Category Table Render
+                    renderCategoryTable("all");
+
+                </script>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>

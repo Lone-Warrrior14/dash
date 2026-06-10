@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freight Operations & Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563EB;
+            --primary-glow: rgba(37, 99, 235, 0.15);
+            --background: #0B0F19;
+            --surface: rgba(17, 24, 39, 0.7);
+            --border: rgba(255, 255, 255, 0.08);
+            --text-main: #F3F4F6;
+            --text-muted: #9CA3AF;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at 50% -20%, #1E293B 0%, var(--background) 70%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+            position: relative;
+            padding: 40px 20px;
+        }
+
+        /* Abstract Background Elements */
+        .ambient-glow {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, transparent 70%);
+            top: 10%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .builder-container {
+            width: 100%;
+            max-width: 620px;
+            padding: 40px;
+            background: var(--surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            z-index: 10;
+            position: relative;
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60A5FA 0%, #3B82F6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 1.05rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 32px;
+        }
+
+        /* Action Selection Cards */
+        .action-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .selector-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 16px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            text-align: left;
+            user-select: none;
+        }
+
+        .selector-card:hover {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(59, 130, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .selector-card.active {
+            background: rgba(37, 99, 235, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(37, 99, 235, 0.15);
+        }
+
+        .selector-icon {
+            font-size: 1.6rem;
+            margin-bottom: 12px;
+        }
+
+        .selector-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .selector-desc {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Drag and Drop Zone */
+        .drop-zone {
+            width: 100%;
+            min-height: 200px;
+            border: 2px dashed rgba(59, 130, 246, 0.3);
+            border-radius: 16px;
+            background: rgba(30, 41, 59, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            margin-bottom: 24px;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(37, 99, 235, 0.05);
+            box-shadow: 0 0 20px var(--primary-glow);
+            transform: scale(1.01);
+        }
+
+        .drop-zone-icon {
+            width: 56px;
+            height: 56px;
+            margin-bottom: 16px;
+            color: #60A5FA;
+            transition: transform 0.3s ease;
+        }
+
+        .drop-zone:hover .drop-zone-icon {
+            transform: translateY(-4px);
+        }
+
+        .drop-zone-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .drop-zone-subtext {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Submit Button */
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+        }
+
+        .submit-btn:active {
+            transform: translateY(0);
+        }
+
+        .submit-btn:disabled {
+            background: #4B5563;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results panel styling */
+        .results-container {
+            margin-top: 32px;
+            border-top: 1px solid var(--border);
+            padding-top: 24px;
+            text-align: left;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .results-header {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            background: linear-gradient(135deg, #F3F4F6 0%, #9CA3AF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .metric-val {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #60A5FA;
+        }
+
+        .metric-lbl {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        .summary-table th, .summary-table td {
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .summary-table th {
+            background: rgba(255, 255, 255, 0.02);
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .summary-table td {
+            color: var(--text-muted);
+        }
+
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .download-zip-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .download-zip-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        }
+
+        /* Footer info */
+        .footer-info {
+            margin-top: 30px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border);
+            padding-top: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .info-pill {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pill-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #10B981;
+        }
+
+        #file-input {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ambient-glow"></div>
+
+    <div class="builder-container">
+        <div class="header">
+            <h1>Freight Analytics Hub</h1>
+            <p>Select your task, upload your logistics Excel report, and process your shipping data locally.</p>
+        </div>
+
+        <form id="upload-form">
+            <!-- Hidden action input -->
+            <input type="hidden" id="action-input" name="action" value="dashboard">
+            <input type="file" id="file-input" name="file" accept=".xlsx, .xls">
+
+            <!-- Card Toggles -->
+            <div class="action-selector">
+                <div class="selector-card active" id="card-dashboard" onclick="setAction('dashboard')">
+                    <div class="selector-icon">📊</div>
+                    <div class="selector-title">Dashboard Builder</div>
+                    <div class="selector-desc">Generate interactive visuals & metrics bundle</div>
+                </div>
+                <div class="selector-card" id="card-validation" onclick="setAction('validation')">
+                    <div class="selector-icon">⚠️</div>
+                    <div class="selector-title">Anomaly Detection</div>
+                    <div class="selector-desc">Run validation rules & export issue sheets</div>
+                </div>
+            </div>
+            
+            <!-- Drag and Drop Zone -->
+            <div class="drop-zone" id="drop-zone">
+                <svg class="drop-zone-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div class="drop-zone-text" id="drop-text">Drag & drop your Excel file here</div>
+                <div class="drop-zone-subtext">or click to browse from device</div>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submit-btn" disabled>
+                <span class="spinner" id="spinner"></span>
+                <span id="btn-text">Build Dashboard Bundle</span>
+            </button>
+        </form>
+
+        <!-- Anomaly Results Container -->
+        <div class="results-container" id="results-container" style="display: none;">
+            <h2 class="results-header">Validation Results</h2>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-val" id="res-rows">-</div>
+                    <div class="metric-lbl">Rows Loaded</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-val" id="res-violations" style="color: #EF4444;">-</div>
+                    <div class="metric-lbl">Total Violations</div>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Validation Rule</th>
+                            <th>Violations</th>
+                            <th>Percent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summary-table-body">
+                        <!-- Dynamic rows -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <a href="#" class="download-zip-btn" id="download-zip-btn">
+                <span>📥</span> Download Validation ZIP
+            </a>
+        </div>
+
+        <div class="footer-info">
+            <div class="info-pill">
+                <div class="pill-dot"></div>
+                <span>Port 5500 Unified Deployment</span>
+            </div>
+            <div class="info-pill">
+                <div class="pill-dot" style="background: #3B82F6;"></div>
+                <span>Matches Original Schemas</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const dropText = document.getElementById('drop-text');
+        const uploadForm = document.getElementById('upload-form');
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btn-text');
+        const actionInput = document.getElementById('action-input');
+        const resultsContainer = document.getElementById('results-container');
+
+        // Selection Cards
+        const cardDashboard = document.getElementById('card-dashboard');
+        const cardValidation = document.getElementById('card-validation');
+
+        function setAction(action) {
+            actionInput.value = action;
+            if (action === 'dashboard') {
+                cardDashboard.classList.add('active');
+                cardValidation.classList.remove('active');
+                if (fileInput.files.length) {
+                    btnText.textContent = 'Build Dashboard Bundle';
+                } else {
+                    btnText.textContent = 'Build Dashboard Bundle';
+                }
+            } else {
+                cardDashboard.classList.remove('active');
+                cardValidation.classList.add('active');
+                if (fileInput.files.length) {
+                    btnText.textContent = 'Analyze Dataset';
+                } else {
+                    btnText.textContent = 'Analyze Dataset';
+                }
+            }
+        }
+
+        // Drag & Drop event handlers
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+            }, false);
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length) {
+                fileInput.files = files;
+                updateFileLabel(files[0].name);
+            }
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                updateFileLabel(fileInput.files[0].name);
+            }
+        });
+
+        function updateFileLabel(name) {
+            dropText.textContent = name;
+            submitBtn.removeAttribute('disabled');
+            setAction(actionInput.value);
+        }
+
+        // AJAX File Submission
+        uploadForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            
+            // Hide previous results
+            resultsContainer.style.display = 'none';
+
+            spinner.style.display = 'block';
+            const action = actionInput.value;
+            btnText.textContent = action === 'dashboard' ? 'Generating Dashboard...' : 'Running Validations...';
+            submitBtn.setAttribute('disabled', 'true');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('action', action);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Upload failed'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                spinner.style.display = 'none';
+                btnText.textContent = action === 'dashboard' ? 'Build Dashboard Bundle' : 'Analyze Dataset';
+                submitBtn.removeAttribute('disabled');
+                
+                if (data.success) {
+                    if (data.action === 'dashboard') {
+                        // Automatically trigger download
+                        window.location.href = data.download_url;
+                    } else if (data.action === 'validation') {
+                        // Display anomaly results
+                        document.getElementById('res-rows').textContent = data.rows_loaded.toLocaleString();
+                        document.getElementById('res-violations').textContent = data.violations.toLocaleString();
+                        
+                        const tableBody = document.getElementById('summary-table-body');
+                        tableBody.innerHTML = '';
+                        
+                        data.summary.forEach(rule => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${rule.Rule}</td>
+                                <td style="font-weight: 500; color: ${rule.Violations > 0 ? '#EF4444' : '#10B981'}">${rule.Violations.toLocaleString()}</td>
+                                <td>${rule.Percent}%</td>
+                            `;
+                            tableBody.appendChild(tr);
+                        });
+                        
+                        document.getElementById('download-zip-btn').href = data.download_url;
+                        resultsContainer.style.display = 'block';
+                    }
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                spinner.style.display = 'none';
+                btnText.textContent = action === 'dashboard' ? 'Build Dashboard Bundle' : 'Analyze Dataset';
+                submitBtn.removeAttribute('disabled');
+                alert('Upload failed: ' + error.message);
+            });
+        });
+    </script>
+</body>
+</html>

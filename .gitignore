@@ -1,0 +1,29 @@
+# Virtual environments
+venv/
+**/venv/
+ENV/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Temporary processing directories
+temp_processing/
+
+# Generated dashboard files
+data.json
+dashboard_data.js
+
+# Data files & Archives
+*.xlsx
+*.xls
+*.csv
+*.zip
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

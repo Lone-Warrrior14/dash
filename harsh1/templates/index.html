@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Freight Analytics Validator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f6f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            text-align: center;
+        }
+        .upload-area {
+            border: 2px dashed #3498db;
+            border-radius: 6px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            background-color: #fcfdfd;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .upload-area.dragover {
+            background-color: #ebf5fb;
+            border-color: #2980b9;
+        }
+        .upload-area p {
+            margin: 0;
+            font-size: 16px;
+            color: #555;
+        }
+        .upload-area span {
+            display: block;
+            margin-top: 10px;
+            font-size: 13px;
+            color: #888;
+        }
+        #fileInput {
+            display: none;
+        }
+        .status-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .status-message {
+            font-weight: bold;
+            color: #2980b9;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .results-container {
+            margin-top: 25px;
+            display: none;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .results-header {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        .metric {
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .metric-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .btn-download {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #2ecc71;
+            color: #fff;
+            text-align: center;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-top: 20px;
+            box-sizing: border-box;
+            transition: background-color 0.2s;
+        }
+        .btn-download:hover {
+            background-color: #27ae60;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .error-message {
+            color: #e74c3c;
+            font-weight: bold;
+            text-align: center;
+            margin-top: 15px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Freight Analytics Validator</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>Drag and drop your Excel file here or click to browse</p>
+            <span>Supports .xlsx, .xls</span>
+            <input type="file" id="fileInput" accept=".xlsx, .xls">
+        </div>
+        
+        <div class="status-container" id="statusContainer">
+            <div class="status-message" id="statusMessage">Uploading file...</div>
+        </div>
+        
+        <div class="error-message" id="errorMessage"></div>
+        
+        <div class="results-container" id="resultsContainer">
+            <div class="results-header">Validation Results</div>
+            <div class="metric"><span class="metric-label">Filename:</span> <span id="resFilename">-</span></div>
+            <div class="metric"><span class="metric-label">Rows Loaded:</span> <span id="resRows">-</span></div>
+            <div class="metric"><span class="metric-label">Violations Count:</span> <span id="resViolations">-</span></div>
+            
+            <table id="summaryTable">
+                <thead>
+                    <tr>
+                        <th>Validation Rule</th>
+                        <th>Violations</th>
+                        <th>Percent</th>
+                    </tr>
+                </thead>
+                <tbody id="summaryTableBody">
+                    <!-- Rows will be added dynamically -->
+                </tbody>
+            </table>
+            
+            <a href="#" class="btn-download" id="downloadBtn">Download ZIP Package</a>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusMessage = document.getElementById('statusMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        const resFilename = document.getElementById('resFilename');
+        const resRows = document.getElementById('resRows');
+        const resViolations = document.getElementById('resViolations');
+        const summaryTableBody = document.getElementById('summaryTableBody');
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // File browser change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        // Drag events
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+            }, false);
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            // Reset UI
+            errorMessage.style.display = 'none';
+            resultsContainer.style.display = 'none';
+            statusContainer.style.display = 'block';
+            statusMessage.innerText = "Processing file: " + file.name + "...";
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => { throw new Error(err.error || 'Upload failed'); });
+                }
+                return response.json();
+            })
+            .then(data => {
+                statusContainer.style.display = 'none';
+                if (data.success) {
+                    // Show results
+                    resFilename.innerText = data.filename;
+                    resRows.innerText = data.rows_loaded.toLocaleString();
+                    resViolations.innerText = data.violations.toLocaleString();
+                    
+                    // Populate Table
+                    summaryTableBody.innerHTML = '';
+                    data.summary.forEach(rule => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${rule.Rule}</td>
+                            <td>${rule.Violations.toLocaleString()}</td>
+                            <td>${rule.Percent}%</td>
+                        `;
+                        summaryTableBody.appendChild(tr);
+                    });
+                    
+                    // Configure download button
+                    downloadBtn.href = `/download/${data.request_id}`;
+                    resultsContainer.style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Processing failed');
+                }
+            })
+            .catch(error => {
+                statusContainer.style.display = 'none';
+                errorMessage.innerText = "Error: " + error.message;
+                errorMessage.style.display = 'block';
+                console.error(error);
+            });
+        }
+    </script>
+</body>
+</html>
