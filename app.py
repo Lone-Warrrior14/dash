@@ -493,5 +493,6 @@ def download(action, session_id):
     return send_file(zip_path, as_attachment=True, download_name=download_name)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5500)
+    port = int(os.environ.get("PORT", 5500))
+    app.run(host="0.0.0.0", port=port)
 
