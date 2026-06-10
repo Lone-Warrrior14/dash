@@ -493,5 +493,5 @@ def download(action, session_id):
     return send_file(zip_path, as_attachment=True, download_name=download_name)
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=5500, debug=True)
+    app.run(host="0.0.0.0", port=5500)
 
