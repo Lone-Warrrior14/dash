@@ -1592,29 +1592,63 @@
                        KPI POPULATION
                     ===================== */
 
+                    function parseInsight(item) {
+                        if (typeof item === 'object' && item !== null) {
+                            return {
+                                text: item.text || "",
+                                type: item.type || "Global",
+                                category: item.category || "All"
+                            };
+                        }
+                        
+                        const text = String(item || "");
+                        let type = "Global";
+                        let category = "All";
+                        
+                        const lowerText = text.toLowerCase();
+                        if (lowerText.includes("anomaly") || lowerText.includes("compliance") || lowerText.includes("violation") || lowerText.includes("mismatch") || lowerText.includes("rules") || lowerText.includes("sequence") || lowerText.includes("atp")) {
+                            type = "Anomaly";
+                        } else if (lowerText.includes("import") || lowerText.includes("bayan") || lowerText.includes("awh") || lowerText.includes("container")) {
+                            type = "Import";
+                        } else if (lowerText.includes("local")) {
+                            type = "Local";
+                        }
+                        
+                        if (lowerText.includes("kitchen production")) {
+                            category = "KITCHEN PRODUCTION";
+                        } else if (lowerText.includes("kitchen project")) {
+                            category = "KITCHEN PROJECT";
+                        } else if (lowerText.includes("wardrobes")) {
+                            category = "WARDROBES";
+                        } else if (lowerText.includes("doors & windows")) {
+                            category = "DOORS & WINDOWS";
+                        } else if (lowerText.includes("loose furniture")) {
+                            category = "LOOSE FURNITURE";
+                        }
+                        
+                        return { text, type, category };
+                    }
+
                     function filterAiInsights() {
                         const typeVal = document.getElementById("aiTypeFilter")?.value || "All";
                         const catVal = document.getElementById("aiCategoryFilter")?.value || "All";
                         const searchVal = (document.getElementById("aiSearchFilter")?.value || "").toLowerCase().trim();
                         
-                        const insights = dashboardData.ai_insights || [];
-                        let filtered = insights.filter(item => {
-                            const text = typeof item === 'string' ? item : (item.text || "");
-                            const type = typeof item === 'string' ? "Global" : (item.type || "Global");
-                            const category = typeof item === 'string' ? "All" : (item.category || "All");
-                            
-                            const matchType = typeVal === "All" || type.toLowerCase() === typeVal.toLowerCase();
-                            const matchCat = catVal === "All" ? true : (category.toLowerCase() === catVal.toLowerCase() || category === "All");
-                            const matchSearch = !searchVal || text.toLowerCase().includes(searchVal);
+                        const rawInsights = dashboardData.ai_insights || [];
+                        const parsedInsights = rawInsights.map(parseInsight);
+                        
+                        let filtered = parsedInsights.filter(item => {
+                            const matchType = typeVal === "All" || item.type.toLowerCase() === typeVal.toLowerCase();
+                            const matchCat = catVal === "All" ? true : (item.category.toLowerCase() === catVal.toLowerCase() || item.category === "All");
+                            const matchSearch = !searchVal || item.text.toLowerCase().includes(searchVal);
                             
                             return matchType && matchCat && matchSearch;
                         });
                         
-                        // Sort filtered insights so that exact category matches bubble to the top
                         if (catVal !== "All") {
                             filtered.sort((a, b) => {
-                                const aCat = (typeof a === 'string' ? "All" : (a.category || "All")).toLowerCase();
-                                const bCat = (typeof b === 'string' ? "All" : (b.category || "All")).toLowerCase();
+                                const aCat = a.category.toLowerCase();
+                                const bCat = b.category.toLowerCase();
                                 const target = catVal.toLowerCase();
                                 
                                 if (aCat === target && bCat !== target) return -1;
@@ -1628,34 +1662,30 @@
                         
                         if (filtered.length > 0) {
                             aiList.innerHTML = filtered.map(item => {
-                                const text = typeof item === 'string' ? item : item.text;
-                                const type = typeof item === 'string' ? "Global" : item.type;
-                                const category = typeof item === 'string' ? "All" : item.category;
-                                
                                 let badgeBg = "rgba(79, 70, 229, 0.1)";
                                 let badgeColor = "var(--primary)";
-                                if (type === "Import") {
+                                if (item.type === "Import") {
                                     badgeBg = "rgba(6, 182, 212, 0.1)";
                                     badgeColor = "#0891b2";
-                                } else if (type === "Local") {
+                                } else if (item.type === "Local") {
                                     badgeBg = "rgba(16, 185, 129, 0.1)";
                                     badgeColor = "#059669";
-                                } else if (type === "Anomaly") {
+                                } else if (item.type === "Anomaly") {
                                     badgeBg = "rgba(239, 68, 68, 0.1)";
                                     badgeColor = "var(--danger)";
                                 }
                                 
-                                const categoryBadge = category !== "All" ? `<span style="display:inline-block; font-size:10px; font-weight:600; background:rgba(107, 114, 128, 0.1); color:#4b5563; padding: 2px 8px; border-radius:10px; text-transform:uppercase; margin-left: 5px;">${category}</span>` : "";
+                                const categoryBadge = item.category !== "All" ? `<span style="display:inline-block; font-size:10px; font-weight:600; background:rgba(107, 114, 128, 0.1); color:#4b5563; padding: 2px 8px; border-radius:10px; text-transform:uppercase; margin-left: 5px;">${item.category}</span>` : "";
                                 
                                 return `
                                     <li class="insight-item" style="margin-bottom: 16px; padding: 16px; border-radius: 12px; background: rgba(255,255,255,0.6); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.01);">
                                         <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
                                             <div style="display:flex; align-items:center; gap:6px;">
-                                                <span style="display:inline-block; font-size:11px; font-weight:700; background:${badgeBg}; color:${badgeColor}; padding: 2px 10px; border-radius:12px; text-transform:uppercase; letter-spacing: 0.3px;">${type}</span>
+                                                <span style="display:inline-block; font-size:11px; font-weight:700; background:${badgeBg}; color:${badgeColor}; padding: 2px 10px; border-radius:12px; text-transform:uppercase; letter-spacing: 0.3px;">${item.type}</span>
                                                 ${categoryBadge}
                                             </div>
                                         </div>
-                                        <span style="font-size:14.5px; line-height:1.6; color: var(--text-dark);">${text}</span>
+                                        <span style="font-size:14.5px; line-height:1.6; color: var(--text-dark);">${item.text}</span>
                                     </li>
                                 `;
                             }).join("");
@@ -1708,8 +1738,9 @@
                             const insights = dashboardData.ai_insights || [];
                             
                             insights.forEach(item => {
-                                if (item.category && item.category !== "All") {
-                                    categories.add(item.category);
+                                const parsed = parseInsight(item);
+                                if (parsed.category && parsed.category !== "All") {
+                                    categories.add(parsed.category);
                                 }
                             });
                             
