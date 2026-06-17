@@ -27,3 +27,7 @@ dashboard_data.js
 # OS files
 .DS_Store
 Thumbs.db
+
+# Secrets
+.env
+

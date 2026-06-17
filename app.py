@@ -65,6 +65,164 @@ def compute_po_input_delay(dataframe):
     }
 
 
+def generate_ai_insights(df, dashboard):
+    import os
+    import requests
+    import json
+    
+    # Pre-calculate values for fallback insights
+    total_pos = dashboard.get("total_pos", 0)
+    total_vendors = dashboard.get("total_vendors", 0)
+    delay_info = dashboard.get("po_input_delay", {}).get("all", {})
+    delay_count = delay_info.get("total_delay_count", 0)
+    total_pid_pos = delay_info.get("total_pos", 1) or 1
+    delay_rate_calc = round((delay_count / total_pid_pos) * 100, 1)
+    
+    import_pos = dashboard.get("import_pos", 0)
+    import_val = dashboard.get("import_total_value", 0.0)
+    import_at_risk = dashboard.get("import_delayed_value", 0.0)
+    import_avg_delay = dashboard.get("import_avg_delay_days", 0.0)
+    import_risk_rate = round((import_at_risk / import_val * 100) if import_val > 0 else 0.0, 1)
+    
+    local_pos = dashboard.get("local_pos", 0)
+    local_val = dashboard.get("local_total_value", 0.0)
+    local_at_risk = dashboard.get("local_delayed_value", 0.0)
+    local_avg_delay = dashboard.get("local_avg_delay_days", 0.0)
+    local_risk_rate = round((local_at_risk / local_val * 100) if local_val > 0 else 0.0, 1)
+    
+    anomaly_data = dashboard.get("anomaly_data", {})
+    audited_pos = anomaly_data.get("total_rows_audited", 0)
+    violated_pos = anomaly_data.get("total_violations", 0)
+    anomaly_rate = round((violated_pos / audited_pos * 100), 1) if audited_pos > 0 else 0.0
+    
+    top_rule = "None"
+    top_rule_count = 0
+    for r in anomaly_data.get("summary", []):
+        if r["Violations"] > top_rule_count:
+            top_rule_count = r["Violations"]
+            top_rule = r["Rule"]
+            
+    # Local fallback list in case Groq is unavailable
+    fallback_insights = [
+        # Global (3)
+        f"Global Sourcing: Audited a total of {total_pos:,} Purchase Orders spanning {total_vendors} unique vendors.",
+        f"Global Tracking: {delay_count:,} POs have active logistic delays, representing an overall tracking delay rate of {delay_rate_calc}%.",
+        f"Global Sourcing Mix: Logistics operations cross-cut {len(dashboard.get('filters', {}).get('countries', []))} country nodes, with {dashboard.get('insights', {}).get('highest_country', 'N/A')} as the primary source country.",
+        
+        # Import (4)
+        f"Import Value: Import shipments total {import_pos:,} POs, managing a gross financial value of {import_val:,.0f} KWD.",
+        f"Import Financial Risk: Delay-exposed import value stands at {import_at_risk:,.0f} KWD, representing {import_risk_rate}% of the total import portfolio.",
+        f"Import Latency: Average import delay is {import_avg_delay:.1f} days, with major bottlenecks identified at BAYAN clearance ({dashboard.get('import_delay_counts', {}).get('BAYAN', 0)} POs) and AWH entry ({dashboard.get('import_delay_counts', {}).get('AWH', 0)} POs).",
+        f"Import Top Delayed Vendor: Vendor {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Vendor Name', 'N/A') if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 'N/A'} is the top delayed supplier with {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Delayed POs', 0) if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 0} delayed POs.",
+        
+        # Local (1)
+        f"Local Delivery comparison: Local operations cover {local_pos:,} POs worth {local_val:,.0f} KWD with a delay rate of {local_risk_rate}% and average delay of {local_avg_delay:.1f} days (significantly lower than import latency).",
+        
+        # Anomaly (2)
+        f"Data Compliance: Out of {audited_pos:,} audited POs, {violated_pos:,} exhibit process compliance anomalies, yielding a {anomaly_rate}% data anomaly rate.",
+        f"Compliance Driver: The most frequent validation mismatch is '{top_rule}' affecting {top_rule_count:,} distinct POs."
+    ]
+    
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        try:
+            with open(".env", "r") as f:
+                for line in f:
+                    if line.startswith("GROQ_API_KEY="):
+                        api_key = line.split("=", 1)[1].strip()
+                        break
+        except Exception:
+            pass
+            
+    if not api_key:
+        return fallback_insights
+        
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    context = {
+        "global_metrics": {
+            "total_pos": total_pos,
+            "total_vendors": total_vendors,
+            "total_delays": delay_count,
+            "delay_rate_percent": delay_rate_calc,
+            "countries": dashboard.get("filters", {}).get("countries", [])
+        },
+        "import_metrics": {
+            "total_pos": import_pos,
+            "total_value_kwd": import_val,
+            "value_at_risk_kwd": import_at_risk,
+            "value_at_risk_percent": import_risk_rate,
+            "avg_delay_days": import_avg_delay,
+            "delay_stages_counts": dashboard.get("import_delay_counts", {}),
+            "top_delayed_vendors": dashboard.get("import_top_delayed_vendors", [])[:3]
+        },
+        "local_metrics": {
+            "total_pos": local_pos,
+            "total_value_kwd": local_val,
+            "value_at_risk_kwd": local_at_risk,
+            "value_at_risk_percent": local_risk_rate,
+            "avg_delay_days": local_avg_delay,
+            "delay_stages_counts": dashboard.get("local_delay_counts", {}),
+            "top_delayed_vendors": dashboard.get("local_top_delayed_vendors", [])[:3]
+        },
+        "anomaly_metrics": {
+            "audited_pos": audited_pos,
+            "violating_pos": violated_pos,
+            "anomaly_rate_percent": anomaly_rate,
+            "rules_summary": anomaly_data.get("summary", [])
+        }
+    }
+    
+    prompt = f"""
+    You are an expert logistics and supply chain business analyst.
+    Analyze the following freight operations dataset metrics and generate EXACTLY 10 actionable, professional business insights.
+    
+    The insights must follow this specific category distribution:
+    - 3 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
+    - 4 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors)
+    - 1 Local insight (comparison of local delays/values vs import)
+    - 2 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance)
+    
+    Ensure all insights are clear, cite specific numbers/percentages from the data, and offer business value. Do not use generic placeholders.
+    
+    Input Data:
+    {json.dumps(context, indent=2)}
+    
+    Return the response as a JSON object containing a single key "insights" which is a list of exactly 10 strings.
+    Do not output any markdown code blocks, explanation text, or front/back matter. Output raw JSON only.
+    """
+    
+    try:
+        payload = {
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.2,
+            "response_format": { "type": "json_object" }
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        if response.status_code == 200:
+            result = response.json()
+            content = result["choices"][0]["message"]["content"]
+            parsed = json.loads(content)
+            insights_list = parsed.get("insights", [])
+            if len(insights_list) == 10:
+                return insights_list
+    except Exception as e:
+        print(f"Error calling Groq API: {str(e)}")
+        
+    return fallback_insights
+
+
 def process_excel(file_stream):
     """Processes the uploaded excel stream and returns the dashboard JSON dict"""
     df = pd.read_excel(file_stream, sheet_name="Sheet1")
@@ -346,10 +504,8 @@ def process_excel(file_stream):
         "local": compute_po_input_delay(local_only)
     }
 
-    # ANOMALY DETECTION DATA — Row based
+    # ANOMALY DETECTION DATA — Distinct PO# based
     adf = df.copy()
-    adf["Issue_Count"] = 0
-    adf["Issue_Details"] = ""
     
     rules_masks = []
     if "ATP" in adf.columns and "GRP" in adf.columns:
@@ -375,71 +531,109 @@ def process_excel(file_stream):
         "ATP_GRP_GAP_GT_5": "ATP to GRP Gap exceeds 5 Days"
     }
 
+    po_violations = {po: set() for po in adf["PO#"].unique()}
+    total_pos_audited = int(adf["PO#"].nunique())
+    
     anomaly_summary = []
     for rule_name, mask in rules_masks:
-        count = int(mask.sum())
+        violated_pos = adf.loc[mask, "PO#"].unique()
+        count = len(violated_pos)
         friendly = RULE_FRIENDLY_NAMES.get(rule_name, rule_name)
         anomaly_summary.append({
             "Rule": friendly,
             "Violations": count,
-            "Percent": round((count / len(adf)) * 100, 2) if len(adf) > 0 else 0
+            "Percent": round((count / total_pos_audited) * 100, 2) if total_pos_audited > 0 else 0
         })
-        adf.loc[mask, "Issue_Count"] += 1
-        adf.loc[mask, "Issue_Details"] = adf.loc[mask, "Issue_Details"].apply(lambda x: x + friendly + "; ")
+        for po in violated_pos:
+            po_violations[po].add(friendly)
+            
+    # Group by PO# and compile unique PO records
+    po_records = []
+    for po, gp in adf.groupby("PO#"):
+        violations = po_violations[po]
+        issue_count = len(violations)
         
-    # Classify Severity
-    adf["Severity"] = np.select(
-        [
-            (adf["Issue_Count"] > 0) & (adf["Import / Local"] == "Import"),
-            (adf["Issue_Count"] > 0) & (adf["Import / Local"] == "Local")
-        ],
-        ["Severe", "Medium"],
-        default="No"
-    )
-    
-    total_rows_audited = len(adf)
-    total_violations = int((adf["Issue_Count"] > 0).sum())
-    severe_count = int((adf["Severity"] == "Severe").sum())
-    medium_count = int((adf["Severity"] == "Medium").sum())
-    
-    # Detail list of violations
-    anomalies_only = adf[adf["Issue_Count"] > 0].copy()
-    anomalies_only.sort_values(by="Issue_Count", ascending=False, inplace=True)
-    
-    detail_list = []
-    for idx, row in anomalies_only.iterrows():
-        atp_str = row["ATP"].strftime("%Y-%m-%d") if pd.notna(row["ATP"]) else "N/A"
-        grp_str = row["GRP"].strftime("%Y-%m-%d") if pd.notna(row["GRP"]) else "N/A"
-        awh_str = row["AWH"].strftime("%Y-%m-%d") if pd.notna(row["AWH"]) else "N/A"
-        bayan_str = row["BAYAN"].strftime("%Y-%m-%d") if pd.notna(row["BAYAN"]) else "N/A"
-        eta_str = row["ETA"].strftime("%Y-%m-%d") if pd.notna(row["ETA"]) else "N/A"
-        etd_str = row["ETD"].strftime("%Y-%m-%d") if pd.notna(row["ETD"]) else "N/A"
+        def get_first_valid(series, default="N/A"):
+            valid = series.dropna()
+            if not valid.empty:
+                val = valid.iloc[0]
+                if pd.notna(val) and str(val).strip() != "":
+                    return val
+            return default
+
+        category = get_first_valid(gp["Category"], "N/A")
+        vendor = get_first_valid(gp["Vendor Name"], "N/A")
+        import_local = get_first_valid(gp["Import / Local"], "Import")
         
-        detail_list.append({
-            "PO#": str(row["PO#"]),
-            "Category": str(row["Category"]) if pd.notna(row["Category"]) else "N/A",
-            "Vendor": str(row["Vendor Name"]) if pd.notna(row["Vendor Name"]) else "N/A",
-            "Import_Local": str(row["Import / Local"]),
-            "Issue_Count": int(row["Issue_Count"]),
-            "Issue_Details": str(row["Issue_Details"]).strip("; "),
-            "Severity": str(row["Severity"]),
+        severity = "No"
+        if issue_count > 0:
+            severity = "Severe" if import_local == "Import" else "Medium"
+            
+        atp_val = gp["ATP"].dropna().iloc[0] if not gp["ATP"].dropna().empty else pd.NaT
+        grp_val = gp["GRP"].dropna().iloc[0] if not gp["GRP"].dropna().empty else pd.NaT
+        awh_val = gp["AWH"].dropna().iloc[0] if not gp["AWH"].dropna().empty else pd.NaT
+        bayan_val = gp["BAYAN"].dropna().iloc[0] if not gp["BAYAN"].dropna().empty else pd.NaT
+        eta_val = gp["ETA"].dropna().iloc[0] if not gp["ETA"].dropna().empty else pd.NaT
+        etd_val = gp["ETD"].dropna().iloc[0] if not gp["ETD"].dropna().empty else pd.NaT
+        
+        atp_str = atp_val.strftime("%Y-%m-%d") if pd.notna(atp_val) else "N/A"
+        grp_str = grp_val.strftime("%Y-%m-%d") if pd.notna(grp_val) else "N/A"
+        awh_str = awh_val.strftime("%Y-%m-%d") if pd.notna(awh_val) else "N/A"
+        bayan_str = bayan_val.strftime("%Y-%m-%d") if pd.notna(bayan_val) else "N/A"
+        eta_str = eta_val.strftime("%Y-%m-%d") if pd.notna(eta_val) else "N/A"
+        etd_str = etd_val.strftime("%Y-%m-%d") if pd.notna(etd_val) else "N/A"
+        
+        # Count rule violations for this PO group across all its line items
+        atp_before_grp_cnt = int((gp["ATP"].notna() & gp["GRP"].notna() & (gp["ATP"] < gp["GRP"])).sum()) if "ATP" in gp.columns and "GRP" in gp.columns else 0
+        atp_before_awh_cnt = int((gp["ATP"].notna() & gp["AWH"].notna() & (gp["ATP"] < gp["AWH"])).sum()) if "ATP" in gp.columns and "AWH" in gp.columns else 0
+        atp_before_bayan_cnt = int((gp["ATP"].notna() & gp["BAYAN"].notna() & (gp["ATP"] < gp["BAYAN"])).sum()) if "ATP" in gp.columns and "BAYAN" in gp.columns else 0
+        atp_before_eta_cnt = int((gp["ATP"].notna() & gp["ETA"].notna() & (gp["ATP"] < gp["ETA"])).sum()) if "ATP" in gp.columns and "ETA" in gp.columns else 0
+        atp_before_etd_cnt = int((gp["ATP"].notna() & gp["ETD"].notna() & (gp["ATP"] < gp["ETD"])).sum()) if "ATP" in gp.columns and "ETD" in gp.columns else 0
+        
+        atp_grp_gap_cnt = 0
+        if "ATP" in gp.columns and "GRP" in gp.columns:
+            grp_gap = (gp["ATP"] - gp["GRP"]).dt.days
+            atp_grp_gap_cnt = int((gp["ATP"].notna() & gp["GRP"].notna() & (grp_gap > 5)).sum())
+
+        po_records.append({
+            "PO#": str(po),
+            "Category": str(category),
+            "Vendor": str(vendor),
+            "Import_Local": str(import_local),
+            "Issue_Count": issue_count,
+            "Issue_Details": "; ".join(sorted(violations)),
+            "Severity": severity,
             "ATP": atp_str,
             "GRP": grp_str,
             "AWH": awh_str,
             "BAYAN": bayan_str,
             "ETA": eta_str,
-            "ETD": etd_str
+            "ETD": etd_str,
+            "ATP_BEFORE_GRP": atp_before_grp_cnt,
+            "ATP_BEFORE_AWH": atp_before_awh_cnt,
+            "ATP_BEFORE_BAYAN": atp_before_bayan_cnt,
+            "ATP_BEFORE_ETA": atp_before_eta_cnt,
+            "ATP_BEFORE_ETD": atp_before_etd_cnt,
+            "ATP_GRP_GAP_GT_5": atp_grp_gap_cnt
         })
         
+    violations_pos = [r for r in po_records if r["Issue_Count"] > 0]
+    total_violations = len(violations_pos)
+    severe_count = sum(1 for r in violations_pos if r["Severity"] == "Severe")
+    medium_count = sum(1 for r in violations_pos if r["Severity"] == "Medium")
+    
+    # Detail list of violations sorted by Issue_Count descending
+    detail_list = sorted(violations_pos, key=lambda x: x["Issue_Count"], reverse=True)
+    
     dashboard["anomaly_data"] = {
-        "total_rows_audited": total_rows_audited,
+        "total_rows_audited": total_pos_audited,
         "total_violations": total_violations,
         "severe_count": severe_count,
         "medium_count": medium_count,
         "summary": anomaly_summary,
         "details": detail_list
     }
-
+    dashboard["ai_insights"] = generate_ai_insights(df, dashboard)
     return dashboard
 
 def process_excel_validator(file_path: Path, output_dir: Path, original_filename: str):

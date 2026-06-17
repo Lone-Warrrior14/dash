@@ -14,3 +14,5 @@ tzdata==2026.2
 pytz==2026.2
 six==1.17.0
 et_xmlfile==2.0.0
+gunicorn==23.0.0
+
