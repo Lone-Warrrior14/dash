@@ -1598,17 +1598,30 @@
                         const searchVal = (document.getElementById("aiSearchFilter")?.value || "").toLowerCase().trim();
                         
                         const insights = dashboardData.ai_insights || [];
-                        const filtered = insights.filter(item => {
+                        let filtered = insights.filter(item => {
                             const text = typeof item === 'string' ? item : (item.text || "");
                             const type = typeof item === 'string' ? "Global" : (item.type || "Global");
                             const category = typeof item === 'string' ? "All" : (item.category || "All");
                             
                             const matchType = typeVal === "All" || type.toLowerCase() === typeVal.toLowerCase();
-                            const matchCat = catVal === "All" ? true : (category.toLowerCase() === catVal.toLowerCase());
+                            const matchCat = catVal === "All" ? true : (category.toLowerCase() === catVal.toLowerCase() || category === "All");
                             const matchSearch = !searchVal || text.toLowerCase().includes(searchVal);
                             
                             return matchType && matchCat && matchSearch;
                         });
+                        
+                        // Sort filtered insights so that exact category matches bubble to the top
+                        if (catVal !== "All") {
+                            filtered.sort((a, b) => {
+                                const aCat = (typeof a === 'string' ? "All" : (a.category || "All")).toLowerCase();
+                                const bCat = (typeof b === 'string' ? "All" : (b.category || "All")).toLowerCase();
+                                const target = catVal.toLowerCase();
+                                
+                                if (aCat === target && bCat !== target) return -1;
+                                if (bCat === target && aCat !== target) return 1;
+                                return 0;
+                            });
+                        }
                         
                         const aiList = document.getElementById("aiInsightsList");
                         if (!aiList) return;

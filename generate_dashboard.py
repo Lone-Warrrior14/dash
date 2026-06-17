@@ -784,6 +784,8 @@ def generate_ai_insights(df, dashboard):
         "Content-Type": "application/json"
     }
     
+    categories_only = [c for c in categories_list if c != "All"]
+    
     context = {
         "global_metrics": {
             "total_pos": total_pos,
@@ -816,7 +818,13 @@ def generate_ai_insights(df, dashboard):
             "anomaly_rate_percent": anomaly_rate,
             "rules_summary": anomaly_data.get("summary", [])
         },
-        "categories": categories_list
+        "category_metrics": {
+            "import_by_category": dashboard.get("import_category_analysis", []),
+            "local_by_category": dashboard.get("local_category_analysis", []),
+            "import_value_by_category": dashboard.get("import_value_by_category", []),
+            "local_value_by_category": dashboard.get("local_value_by_category", [])
+        },
+        "categories": categories_only
     }
     
     prompt = f"""
@@ -825,16 +833,18 @@ def generate_ai_insights(df, dashboard):
     
     The insights must follow this specific category and type distribution:
     - 4 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
-    - 6 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors, and category-level import insights for categories like {categories_list})
+    - 6 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors, and at least 3 category-specific import insights for categories from the category_metrics)
     - 2 Local insights (comparison of local delays/values vs import, local bottlenecks)
     - 3 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance, category-specific anomalies)
+    
+    CRITICAL: For the insights, you MUST use the exact category names from the dataset (such as {categories_only}) in the "category" field and discuss them in the "text". DO NOT use "All" for all insights. At least 6 insights must be specific to individual categories.
     
     Ensure all insights are clear, cite specific numbers/percentages from the data, and offer business value. Do not use generic placeholders.
     
     Return the response as a JSON object containing a single key "insights" which is a list of exactly 15 objects.
     Each object MUST have exactly these keys:
     - "type": the insight type (one of: "Global", "Import", "Local", "Anomaly")
-    - "category": the specific category this insight relates to (one of: "All", or a specific category name from the list: {categories_list})
+    - "category": the specific category this insight relates to (one of: "All", or a specific category name from the list: {categories_only})
     - "text": the descriptive text of the insight, citing actual numbers from the metrics.
     
     Do not output any markdown code blocks, explanation text, or front/back matter. Output raw JSON only.
