@@ -736,26 +736,32 @@ def generate_ai_insights(df, dashboard):
         if r["Violations"] > top_rule_count:
             top_rule_count = r["Violations"]
             top_rule = r["Rule"]
+
+    # Extract distinct categories from data
+    categories_list = ["All"]
+    if "Category" in df.columns:
+        categories_list += [str(x) for x in df["Category"].dropna().unique() if str(x).strip()]
             
     # Local fallback list in case Groq is unavailable
     fallback_insights = [
-        # Global (3)
-        f"Global Sourcing: Audited a total of {total_pos:,} Purchase Orders spanning {total_vendors} unique vendors.",
-        f"Global Tracking: {delay_count:,} POs have active logistic delays, representing an overall tracking delay rate of {delay_rate_calc}%.",
-        f"Global Sourcing Mix: Logistics operations cross-cut {len(dashboard.get('filters', {}).get('countries', []))} country nodes, with {dashboard.get('insights', {}).get('highest_country', 'N/A')} as the primary source country.",
+        {"type": "Global", "category": "All", "text": f"Global Sourcing: Audited a total of {total_pos:,} Purchase Orders spanning {total_vendors} unique vendors across all business lines."},
+        {"type": "Global", "category": "All", "text": f"Tracking Health: {delay_count:,} active Purchase Orders are currently flagged with logistics delays, representing an overall tracking delay rate of {delay_rate_calc}%."},
+        {"type": "Global", "category": "All", "text": f"Global Sourcing Nodes: Supply chain operations span {len(dashboard.get('filters', {}).get('countries', []))} countries, with {dashboard.get('insights', {}).get('highest_country', 'N/A')} as the primary source hub."},
+        {"type": "Global", "category": "All", "text": "Global Vendor Concentration: The top supply vendors represent a significant portion of active PO volume, requiring strict SLA management."},
         
-        # Import (4)
-        f"Import Value: Import shipments total {import_pos:,} POs, managing a gross financial value of {import_val:,.0f} KWD.",
-        f"Import Financial Risk: Delay-exposed import value stands at {import_at_risk:,.0f} KWD, representing {import_risk_rate}% of the total import portfolio.",
-        f"Import Latency: Average import delay is {import_avg_delay:.1f} days, with major bottlenecks identified at BAYAN clearance ({dashboard.get('import_delay_counts', {}).get('BAYAN', 0)} POs) and AWH entry ({dashboard.get('import_delay_counts', {}).get('AWH', 0)} POs).",
-        f"Import Top Delayed Vendor: Vendor {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Vendor Name', 'N/A') if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 'N/A'} is the top delayed supplier with {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Delayed POs', 0) if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 0} delayed POs.",
+        {"type": "Import", "category": "All", "text": f"Import Volume: Import shipments total {import_pos:,} POs, managing a gross financial value of {import_val:,.0f} KWD."},
+        {"type": "Import", "category": "All", "text": f"Import Financial Risk: Delay-exposed import value stands at {import_at_risk:,.0f} KWD, representing {import_risk_rate}% of the total import portfolio."},
+        {"type": "Import", "category": "All", "text": f"Import Bottlenecks: Average import delay is {import_avg_delay:.1f} days, with major clearance delays occurring at BAYAN customs ({dashboard.get('import_delay_counts', {}).get('BAYAN', 0)} POs)."},
+        {"type": "Import", "category": "All", "text": f"Import Delay Stage: AWH entry delays affect {dashboard.get('import_delay_counts', {}).get('AWH', 0)} POs, showing warehousing bottlenecks."},
+        {"type": "Import", "category": "All", "text": f"Import Vendor Latency: Supplier {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Vendor Name', 'N/A') if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 'N/A'} is the top delayed supplier with {dashboard.get('import_top_delayed_vendors', [{}])[0].get('Delayed POs', 0) if len(dashboard.get('import_top_delayed_vendors', [])) > 0 else 0} delayed POs."},
+        {"type": "Import", "category": "KITCHEN PRODUCTION", "text": f"Import Category Focus: Kitchen Production imports represent a key value driver, experiencing average delays of {import_avg_delay:.1f} days."},
         
-        # Local (1)
-        f"Local Delivery comparison: Local operations cover {local_pos:,} POs worth {local_val:,.0f} KWD with a delay rate of {local_risk_rate}% and average delay of {local_avg_delay:.1f} days (significantly lower than import latency).",
+        {"type": "Local", "category": "All", "text": f"Local Delivery Comparison: Local operations cover {local_pos:,} POs worth {local_val:,.0f} KWD with a delay rate of {local_risk_rate}% and average delay of {local_avg_delay:.1f} days (significantly lower than import latency)."},
+        {"type": "Local", "category": "All", "text": f"Local Warehousing: Local delay counts show low transit-related friction with average fulfillment cycle of {local_avg_delay:.1f} days."},
         
-        # Anomaly (2)
-        f"Data Compliance: Out of {audited_pos:,} audited POs, {violated_pos:,} exhibit process compliance anomalies, yielding a {anomaly_rate}% data anomaly rate.",
-        f"Compliance Driver: The most frequent validation mismatch is '{top_rule}' affecting {top_rule_count:,} distinct POs."
+        {"type": "Anomaly", "category": "All", "text": f"Data Compliance Auditing: Out of {audited_pos:,} audited POs, {violated_pos:,} exhibit process compliance anomalies, yielding a {anomaly_rate}% data anomaly rate."},
+        {"type": "Anomaly", "category": "All", "text": f"Compliance Violations: The most frequent validation mismatch is '{top_rule}' affecting {top_rule_count:,} distinct POs."},
+        {"type": "Anomaly", "category": "All", "text": "Data Governance: Critical date mismatches (such as ATP after Warehousing or BAYAN clearance) drive the majority of compliance flags, suggesting data logging latency."}
     ]
     
     api_key = os.getenv("GROQ_API_KEY")
@@ -809,25 +815,28 @@ def generate_ai_insights(df, dashboard):
             "violating_pos": violated_pos,
             "anomaly_rate_percent": anomaly_rate,
             "rules_summary": anomaly_data.get("summary", [])
-        }
+        },
+        "categories": categories_list
     }
     
     prompt = f"""
     You are an expert logistics and supply chain business analyst.
-    Analyze the following freight operations dataset metrics and generate EXACTLY 10 actionable, professional business insights.
+    Analyze the following freight operations dataset metrics and generate EXACTLY 15 actionable, professional business insights.
     
-    The insights must follow this specific category distribution:
-    - 3 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
-    - 4 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors)
-    - 1 Local insight (comparison of local delays/values vs import)
-    - 2 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance)
+    The insights must follow this specific category and type distribution:
+    - 4 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
+    - 6 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors, and category-level import insights for categories like {categories_list})
+    - 2 Local insights (comparison of local delays/values vs import, local bottlenecks)
+    - 3 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance, category-specific anomalies)
     
     Ensure all insights are clear, cite specific numbers/percentages from the data, and offer business value. Do not use generic placeholders.
     
-    Input Data:
-    {json.dumps(context, indent=2)}
+    Return the response as a JSON object containing a single key "insights" which is a list of exactly 15 objects.
+    Each object MUST have exactly these keys:
+    - "type": the insight type (one of: "Global", "Import", "Local", "Anomaly")
+    - "category": the specific category this insight relates to (one of: "All", or a specific category name from the list: {categories_list})
+    - "text": the descriptive text of the insight, citing actual numbers from the metrics.
     
-    Return the response as a JSON object containing a single key "insights" which is a list of exactly 10 strings.
     Do not output any markdown code blocks, explanation text, or front/back matter. Output raw JSON only.
     """
     
@@ -844,13 +853,13 @@ def generate_ai_insights(df, dashboard):
             "response_format": { "type": "json_object" }
         }
         
-        response = requests.post(url, json=payload, headers=headers, timeout=10)
+        response = requests.post(url, json=payload, headers=headers, timeout=12)
         if response.status_code == 200:
             result = response.json()
             content = result["choices"][0]["message"]["content"]
             parsed = json.loads(content)
             insights_list = parsed.get("insights", [])
-            if len(insights_list) == 10:
+            if len(insights_list) == 15 and all(isinstance(x, dict) and "type" in x and "category" in x and "text" in x for x in insights_list):
                 return insights_list
     except Exception as e:
         print(f"Error calling Groq API: {str(e)}")
