@@ -829,19 +829,19 @@ def generate_ai_insights(df, dashboard):
     
     prompt = f"""
     You are an expert logistics and supply chain business analyst.
-    Analyze the following freight operations dataset metrics and generate EXACTLY 15 actionable, professional business insights.
+    Analyze the following freight operations dataset metrics and generate a comprehensive set of actionable, professional business insights (e.g. 15 to 25 insights, covering all categories and types).
     
-    The insights must follow this specific category and type distribution:
-    - 4 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
-    - 6 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors, and at least 3 category-specific import insights for categories from the category_metrics)
-    - 2 Local insights (comparison of local delays/values vs import, local bottlenecks)
-    - 3 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance, category-specific anomalies)
+    The insights must follow this category and type distribution:
+    - At least 4 Global/Overview insights (overall volume, top supply countries, overall tracking delays)
+    - At least 6 Import insights (specific import value, value at risk, bottleneck stages like BAYAN/AWH, top delayed vendors, and at least 3 category-specific import insights for categories from the category_metrics)
+    - At least 2 Local insights (comparison of local delays/values vs import, local bottlenecks)
+    - At least 3 Anomaly validation insights (anomaly rate, most common data error or date-out-of-sequence rules violating compliance, category-specific anomalies)
     
     CRITICAL: For the insights, you MUST use the exact category names from the dataset (such as {categories_only}) in the "category" field and discuss them in the "text". DO NOT use "All" for all insights. At least 6 insights must be specific to individual categories.
     
     Ensure all insights are clear, cite specific numbers/percentages from the data, and offer business value. Do not use generic placeholders.
     
-    Return the response as a JSON object containing a single key "insights" which is a list of exactly 15 objects.
+    Return the response as a JSON object containing a single key "insights" which is a list of these objects.
     Each object MUST have exactly these keys:
     - "type": the insight type (one of: "Global", "Import", "Local", "Anomaly")
     - "category": the specific category this insight relates to (one of: "All", or a specific category name from the list: {categories_only})
@@ -869,7 +869,7 @@ def generate_ai_insights(df, dashboard):
             content = result["choices"][0]["message"]["content"]
             parsed = json.loads(content)
             insights_list = parsed.get("insights", [])
-            if len(insights_list) == 15 and all(isinstance(x, dict) and "type" in x and "category" in x and "text" in x for x in insights_list):
+            if len(insights_list) >= 5 and all(isinstance(x, dict) and "type" in x and "category" in x and "text" in x for x in insights_list):
                 return insights_list
     except Exception as e:
         print(f"Error calling Groq API: {str(e)}")
